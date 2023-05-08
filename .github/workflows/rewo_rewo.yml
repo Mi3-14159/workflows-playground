@@ -4,6 +4,9 @@ on:
       foo:
         required: false
         type: string
+    secrets:
+      test:
+        required: false
 
 jobs:
   default:
@@ -13,3 +16,8 @@ jobs:
       
       - run: echo "${{ inputs.foo }}"
     
+      - name: test conditional secrets
+        env:
+          test: ${{ secrets.test }}
+        if: env.test != ''
+        run: echo ${{ env.test}}
