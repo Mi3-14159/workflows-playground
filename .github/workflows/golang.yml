@@ -1,0 +1,95 @@
+name: Golang build
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/golang.yml"
+      - "src/**"
+  workflow_dispatch:
+    inputs:
+      go-version:
+        required: false
+        type: string
+        description: golang version to use
+  pull_request:
+    paths:
+      - ".github/workflows/golang.yml"
+      - "src/**"
+
+jobs:
+  deploy:
+    name: Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+
+      - name: Setup golang
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ inputs.go-version }}
+          go-version-file: src/go.mod
+
+      - name: Get golang cache directories
+        id: golang-cache-dir
+        shell: bash
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> ${GITHUB_OUTPUT}
+          echo "gomodcache=$(go env GOMODCACHE)" >> ${GITHUB_OUTPUT}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.golang-cache-dir.outputs.gocache }}
+            ${{ steps.golang-cache-dir.outputs.gomodcache }}
+          key: ${{ runner.os }}-go-${{ inputs.working-directory }}-${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ inputs.working-directory }}-
+
+      - run: go mod download
+
+      - run: go build .
+
+  linter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup golang
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ inputs.go-version }}
+          go-version-file: src/go.mod
+
+      - name: Get golang cache directories
+        id: golang-cache-dir
+        shell: bash
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> ${GITHUB_OUTPUT}
+          echo "gomodcache=$(go env GOMODCACHE)" >> ${GITHUB_OUTPUT}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.golang-cache-dir.outputs.gocache }}
+            ${{ steps.golang-cache-dir.outputs.gomodcache }}
+          key: ${{ runner.os }}-go-${{ inputs.working-directory }}-${{ hashFiles(format('{0}/go.sum', inputs.working-directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ inputs.working-directory }}-
+
+      - run: go mod download
+
+      - name: Go lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          working-directory: src
+          skip-cache: true
+          args: -E gofmt -E govet -E staticcheck

@@ -1,0 +1,47 @@
+on:
+  workflow_call:
+    inputs:
+      workspace:
+        required: true
+        type: string
+      docker_tag:
+        required: true
+        type: string
+      ref:
+        required: false
+        type: string
+      cypress_suites:
+        required: true
+        type: string
+      cache:
+        required: false
+        type: choice
+        default: npm
+        options:
+        - npm
+        - yarn
+        - pnpm
+        
+
+jobs:
+#  cypress:
+#    runs-on: ubuntu-latest
+#    name: Cypress
+#    strategy:
+#      matrix:
+#        suites: ${{ fromJSON(inputs.cypress_suites) }}
+#    steps:
+#      - name: echo stuff
+#        run: |
+#          echo "${{ inputs.workspace }}"
+#          echo "${{ matrix.suites }}"
+
+  cypress2:
+    uses: ./.github/workflows/rewo_rewo.yml
+    name: Cypress2
+    strategy:
+      matrix:
+#        suites: ${{ fromJSON(inputs.cypress_suites) }}
+        suites: ["smoke"]
+    with:
+      foo: ${{ toJSON(fromJSON(inputs.cypress_suites)) }}

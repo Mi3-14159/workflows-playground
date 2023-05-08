@@ -1,0 +1,49 @@
+name: dispatch checks
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      workspaces:
+        description: Json array with the workspace names where you want the server to deploy.
+        required: true
+        type: string
+        default: '["staging", "production"]'
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning' 
+        type: choice
+        options:
+        - info
+        - warning
+        - debug
+      cypress_suites:
+        required: false
+        type: string
+        description: Cypress test suite names to execute as a json array. e.g. ["smoke", "regression"]
+        default: '["smoke"]'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check
+        run: |
+          echo "${{ inputs.workspaces || '["staging"]' }}"
+          echo "${{ inputs.logLevel }}"
+          echo "${{ toJSON(fromJSON(inputs.cypress_suites || '["foobar"]')) }}"
+
+  cypress:
+    uses: ./.github/workflows/rewo.yml
+    with:
+      workspace: ${{ matrix.workspaces }}
+      ref: ${{ inputs.ref }}
+      cypress_suites: ${{ inputs.cypress_suites || '["smoke"]' }}
+      docker_tag: QASDDA
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        workspaces: ${{ fromJSON(inputs.workspaces || '["staging", "production"]') }}

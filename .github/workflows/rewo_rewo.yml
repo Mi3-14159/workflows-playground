@@ -1,0 +1,15 @@
+on:
+  workflow_call:
+    inputs:
+      foo:
+        required: false
+        type: string
+
+jobs:
+  default:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "foo"
+      
+      - run: echo "${{ inputs.foo }}"
+    

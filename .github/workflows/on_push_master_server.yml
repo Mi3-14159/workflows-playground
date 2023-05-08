@@ -1,0 +1,73 @@
+name: Labeling check
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+  pull_request:
+
+env:
+  path: src
+
+jobs:
+  deploy:
+    name: Check if label was set on PR
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v2
+
+      # Do ld database migration if necessary
+      - name: set environment variable with pull request informations
+        id: migration
+        run: |
+          echo "needed=$(gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '[.[].labels[].name] | contains(["createEnv"])')" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: calc hash
+        run: |
+          echo ${{ hashFiles(format('{0}/.terraform.lock.hcl', env.path)) }}
+
+      - name: print env
+        run: |
+          echo foo 
+          echo "${{ env.LABELS }}"
+          echo "${{ steps.migration.outputs.needed }}"
+
+      - name: Exec only if label was set
+        if: steps.migration.outputs.needed == 'true'
+        run: echo ${{ steps.migration.outputs.needed }}
+
+      - name: Exec if not pr and label was set
+        if: github.event_name != 'pull_request' && steps.migration.outputs.needed == 'true'
+        run: echo ${{ steps.migration.outputs.needed }}
+        
+      - name: Get Tags for Image
+        id: metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: ecr.registry/image
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=foobar
+            type=sha
+      
+      - name: print tags
+        run: echo '${{ toJSON(fromJSON(steps.metadata.outputs.json).tags) }}'
+
+      - name: Summary
+        run: |
+          echo "## Docker push context: " >> $GITHUB_STEP_SUMMARY
+          echo "### Registry:" >> $GITHUB_STEP_SUMMARY
+          echo "- 806599846381.dkr.ecr.eu-central-1.amazonaws.com" >> $GITHUB_STEP_SUMMARY
+          echo "### Repository:" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ format('[{0}](https://eu-central-1.console.aws.amazon.com/ecr/repositories/private/806599846381/{0})', 'livingdocs-db-backup') }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Tags: " >> $GITHUB_STEP_SUMMARY
+          echo '${{ toJSON(fromJSON(steps.metadata.outputs.json).tags) }}' | jq -r '.[] | split("/"; "") | .[-1] | ("- " + .)' >> $GITHUB_STEP_SUMMARY
+          echo "### Digest: " >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ format('[{0}](https://eu-central-1.console.aws.amazon.com/ecr/repositories/private/806599846381/{0}/_/image/{1}/details', 'livingdocs-db-backup', 'sha256:f102a66afe44665beb7c2a6ef31e7b44610d69e9ef919a1f3236db16ce75e827') }}" >> $GITHUB_STEP_SUMMARY
