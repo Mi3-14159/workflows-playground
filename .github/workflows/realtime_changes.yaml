@@ -1,0 +1,23 @@
+name: Realtime ENV changes
+on:
+  push:
+    paths:
+      - .github/workflows/realtime_changes.yaml
+
+env:
+  CONSTANT: test
+
+jobs:
+  realtime_changes:
+    name: Check for realtime changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait constant
+        run: sleep 10
+
+      - name: Wait for env.<JOB_ID>_<WORKSPACE>_IDLE to be false
+        run: |
+          while [ -z "$${{ github.job }}_${{ env.CONSTANT }}_IDLE" ]; do
+            echo "Waiting for \$${{ github.job }}_${{ env.CONSTANT }}_IDLE to be false or empty"
+            sleep 5
+          done
